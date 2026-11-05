@@ -1,0 +1,1229 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>INNER JOIN paso a paso</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=Source+Sans+3:wght@400;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+/* Layout: columna de lectura de 1100px; cada tabla tiene su color (libro azul, autor naranja, socio violeta, préstamo verde azulado) y ese color la sigue en diagramas, animaciones y código. */
+:root{
+  --bg:#F5F6FA; --surface:#FFFFFF; --ink:#141A2E; --muted:#4F5770; --line:#DCE0EA;
+  --a:#1F5FD1; --a-soft:#E3ECFB;   /* libro */
+  --b:#B3470F; --b-soft:#FBE9DE;   /* autor */
+  --c:#7A3FC2; --c-soft:#EFE6FA;   /* socio */
+  --d:#08705F; --d-soft:#DDF3EF;   /* prestamo */
+  --e:#A62D66; --e-soft:#FBE4EE;   /* libro_autor */
+  --ok:#1E7B34; --ok-soft:#DDF2E2; --bad:#B42318; --bad-soft:#FCE6E3;
+  --code-bg:#141A2E; --code-fg:#E8ECF6; --code-kw:#8CB4FF; --code-str:#F5B97A; --code-cm:#8A93AD;
+  --f-display:'Sora', 'Segoe UI', system-ui, sans-serif;
+  --f-body:'Source Sans 3', 'Segoe UI', system-ui, sans-serif;
+  --f-mono:'JetBrains Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0F1322; --surface:#171C2F; --ink:#E8ECF6; --muted:#A3ABC2; --line:#2A3149;
+  --a:#86ADF7; --a-soft:#1D2A4A; --b:#F29A64; --b-soft:#3A2418; --c:#C3A1F2; --c-soft:#2D2244; --d:#5CCDBB; --d-soft:#123430; --e:#F291BE; --e-soft:#3B1A2A;
+  --ok:#72D38D; --ok-soft:#173A25; --bad:#F2877D; --bad-soft:#3F1D1B;
+  --code-bg:#0A0D18; --code-fg:#E8ECF6; --code-kw:#8CB4FF; --code-str:#F5B97A; --code-cm:#7D86A0; color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#0F1322; --surface:#171C2F; --ink:#E8ECF6; --muted:#A3ABC2; --line:#2A3149;
+  --a:#86ADF7; --a-soft:#1D2A4A; --b:#F29A64; --b-soft:#3A2418; --c:#C3A1F2; --c-soft:#2D2244; --d:#5CCDBB; --d-soft:#123430; --e:#F291BE; --e-soft:#3B1A2A;
+  --ok:#72D38D; --ok-soft:#173A25; --bad:#F2877D; --bad-soft:#3F1D1B;
+  --code-bg:#0A0D18; --code-fg:#E8ECF6; --code-kw:#8CB4FF; --code-str:#F5B97A; --code-cm:#7D86A0; color-scheme:dark }
+
+*{box-sizing:border-box}
+body{background:var(--bg); color:var(--ink); font-family:var(--f-body); font-size:18px; line-height:1.6}
+body::before{content:""; position:fixed; inset:0 0 auto; height:env(safe-area-inset-top,0px); z-index:30; background:var(--surface)}
+a{color:var(--a)}
+h1,h2,h3{font-family:var(--f-display); line-height:1.15; text-wrap:balance; margin:0}
+h2{font-size:clamp(28px,4vw,38px); letter-spacing:-0.01em}
+h3{font-size:21px}
+p{margin:0}
+code,pre,kbd{font-family:var(--f-mono)}
+.wrap{max-width:1100px; margin:0 auto; padding-left:max(16px,env(safe-area-inset-left,0px)); padding-right:max(16px,env(safe-area-inset-right,0px))}
+.prose{max-width:68ch}
+:focus-visible{outline:3px solid var(--a); outline-offset:2px}
+
+/* nav */
+.nav{position:sticky; top:env(safe-area-inset-top,0px); z-index:20; background:var(--surface); border-bottom:1px solid var(--line)}
+.nav .wrap{display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px 24px; padding-block:10px}
+.brand{font-family:var(--f-display); font-weight:700; font-size:17px; color:var(--ink); text-decoration:none; display:flex; gap:10px; align-items:center}
+.nav ul{list-style:none; margin:0; padding:0; display:flex; flex-wrap:wrap; gap:2px 18px; font-size:15px; font-weight:600}
+.nav ul a{color:var(--muted); text-decoration:none; display:inline-block; padding:8px 0}
+.nav ul a:hover{color:var(--ink)}
+section[id]{scroll-margin-top:72px}
+
+/* hero */
+.hero .wrap{display:flex; flex-wrap:wrap; align-items:center; gap:40px; padding-block:64px 56px}
+.hero-text{flex:1 1 420px; min-width:0; display:flex; flex-direction:column; gap:18px}
+.eyebrow{font-family:var(--f-mono); font-size:13px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); font-weight:500}
+.hero h1{font-size:clamp(40px,6vw,64px); letter-spacing:-0.025em}
+.hero h1 em{font-style:normal; color:var(--ok)}
+.lead{font-size:20px; color:var(--muted); max-width:56ch}
+.hero-art{flex:1 1 380px; min-width:0; display:flex; justify-content:center}
+.hero-art svg{width:100%; max-width:460px; height:auto}
+.venn-l{animation:slideL 1.1s cubic-bezier(.2,.8,.2,1) both}
+.venn-r{animation:slideR 1.1s cubic-bezier(.2,.8,.2,1) both}
+.venn-mid{animation:pulse 2.6s ease-in-out 1.1s infinite}
+@keyframes slideL{from{transform:translateX(-26px)}to{transform:none}}
+@keyframes slideR{from{transform:translateX(26px)}to{transform:none}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
+.chips{display:flex; flex-wrap:wrap; gap:8px}
+.chip{font-family:var(--f-mono); font-size:13px; padding:4px 10px; border-radius:999px; border:1px solid var(--line); background:var(--surface)}
+
+/* sections */
+.band{padding-block:72px; border-top:1px solid var(--line)}
+.band.alt{background:var(--surface)}
+.band .wrap{display:flex; flex-direction:column; gap:28px}
+.sec-head{display:flex; flex-direction:column; gap:10px}
+.step-n{font-family:var(--f-mono); font-size:13px; font-weight:700; color:var(--muted); letter-spacing:.06em}
+
+/* tags per table */
+.t-libro{--tc:var(--a); --tcs:var(--a-soft)}
+.t-autor{--tc:var(--b); --tcs:var(--b-soft)}
+.t-socio{--tc:var(--c); --tcs:var(--c-soft)}
+.t-prestamo{--tc:var(--d); --tcs:var(--d-soft)}
+.t-res{--tc:var(--ok); --tcs:var(--ok-soft)}
+.t-la{--tc:var(--e); --tcs:var(--e-soft)}
+.t-persona{--tc:var(--a); --tcs:var(--a-soft)}
+.t-alumno{--tc:var(--c); --tcs:var(--c-soft)}
+.tname{font-family:var(--f-mono); font-weight:700; color:var(--tc)}
+
+/* data tables */
+.tables{display:flex; flex-wrap:wrap; gap:20px; align-items:flex-start}
+.tbox{flex:1 1 300px; min-width:0; border:1px solid var(--line); border-radius:12px; background:var(--surface); overflow:hidden}
+.tbox.wide{flex-basis:100%}
+.tbox-h{display:flex; justify-content:space-between; align-items:baseline; gap:12px; padding:10px 14px; background:var(--tcs); border-bottom:1px solid var(--line)}
+.tbox-h .tname{font-size:15px}
+.tbox-h small{font-family:var(--f-mono); font-size:12px; color:var(--muted)}
+.scroll{overflow-x:auto}
+table.data{width:100%; border-collapse:collapse; font-family:var(--f-mono); font-size:14px; font-variant-numeric:tabular-nums}
+table.data th{text-align:left; font-weight:500; color:var(--muted); padding:8px 12px; border-bottom:1px solid var(--line); white-space:nowrap}
+table.data td{padding:8px 12px; border-bottom:1px solid var(--line); transition:background .25s, opacity .3s, box-shadow .25s}
+table.data tr:last-child td{border-bottom:0}
+.badge{display:inline-block; font-size:10px; font-weight:700; padding:1px 5px; border-radius:4px; margin-left:6px; vertical-align:1px; letter-spacing:.04em}
+.badge.pk{background:var(--ink); color:var(--surface)}
+.badge.fk{border:1px solid var(--tc); color:var(--tc)}
+td.key{font-weight:700; color:var(--tc)}
+td.null{color:var(--muted); font-style:italic}
+tr.is-focus td{background:var(--tcs)}
+tr.is-focus td:first-child{box-shadow:inset 5px 0 var(--tc)}
+tr.is-cmp td:first-child{box-shadow:inset 5px 0 var(--ink)}
+tr.is-hit td{background:var(--ok-soft)}
+tr.is-miss td{background:var(--bad-soft)}
+tr.is-drop td{opacity:.42; text-decoration:line-through}
+tr.placeholder td{color:var(--muted); font-family:var(--f-body); font-style:italic; text-align:center; padding:18px}
+tr.enter td{animation:rowIn .7s ease-out}
+@keyframes rowIn{from{background:var(--ok-soft); box-shadow:inset 0 0 0 2px var(--ok)}to{background:transparent}}
+
+/* player */
+.player{border:1px solid var(--line); border-radius:16px; background:var(--bg); padding:20px; display:flex; flex-direction:column; gap:18px}
+.band.alt .player{background:var(--bg)}
+.controls{display:flex; flex-wrap:wrap; gap:10px; align-items:center}
+.btn{display:inline-flex; align-items:center; gap:8px; min-height:44px; padding:0 18px; border-radius:10px; border:1.5px solid var(--ink); background:var(--surface); color:var(--ink); font:600 15px var(--f-body); cursor:pointer}
+.btn.primary{background:var(--ink); color:var(--surface)}
+.btn:disabled{opacity:.45; cursor:not-allowed}
+.btn svg{width:16px; height:16px}
+.speed{display:flex; align-items:center; gap:8px; font-size:15px; color:var(--muted); margin-left:auto}
+.speed select{min-height:40px; border-radius:8px; border:1px solid var(--line); background:var(--surface); color:var(--ink); font:inherit; padding:0 8px}
+.progress{height:6px; border-radius:6px; background:var(--line); overflow:hidden}
+.progress span{display:block; height:100%; width:0; background:var(--ok); transition:width .25s}
+.readout{min-height:58px; display:flex; align-items:center; gap:12px; padding:12px 16px; border-radius:10px; background:var(--surface); border:1px dashed var(--line); font-size:17px}
+.readout b{font-family:var(--f-mono); font-weight:700}
+.readout .ok{color:var(--ok)} .readout .bad{color:var(--bad)}
+.counter{font-family:var(--f-mono); font-size:13px; color:var(--muted); white-space:nowrap}
+.arrow-down{display:flex; justify-content:center; color:var(--muted); font-family:var(--f-mono); font-size:13px; gap:8px; align-items:center}
+
+/* code */
+pre.sql{margin:0; background:var(--code-bg); color:var(--code-fg); border-radius:12px; padding:18px 20px; font-size:15px; line-height:1.7; overflow-x:auto}
+.kw{color:var(--code-kw); font-weight:700}
+.str{color:var(--code-str)}
+.cm{color:var(--code-cm); font-style:italic}
+.al-a{color:#86ADF7} .al-b{color:#F29A64} .al-c{color:#C3A1F2} .al-d{color:#5CCDBB} .al-e{color:#F291BE}
+[data-part]{border-radius:4px; transition:background .25s, box-shadow .25s}
+[data-part].hl{background:rgba(114,211,141,.22); box-shadow:0 0 0 2px rgba(114,211,141,.55)}
+.inline{font-family:var(--f-mono); font-size:.88em; padding:1px 6px; border-radius:5px; background:var(--surface); border:1px solid var(--line)}
+.band.alt .inline{background:var(--bg)}
+
+/* split layouts */
+.split{display:flex; flex-wrap:wrap; gap:28px; align-items:flex-start}
+.split > *{flex:1 1 380px; min-width:0}
+figure{margin:0; display:flex; flex-direction:column; gap:10px}
+figcaption{font-size:15px; color:var(--muted)}
+.diagram{border:1px solid var(--line); border-radius:12px; background:var(--surface); padding:14px; overflow-x:auto}
+.band.alt .diagram{background:var(--bg)}
+.diagram svg{display:block; width:100%; min-width:520px; height:auto}
+
+/* grid (producto cartesiano) */
+.cart{display:grid; grid-template-columns:minmax(150px,1.6fr) repeat(4,minmax(64px,1fr)); gap:4px; font-family:var(--f-mono); font-size:13px; min-width:520px}
+.cart .hd{padding:6px 8px; font-weight:700; color:var(--b); text-align:center}
+.cart .rh{padding:6px 8px; color:var(--a); font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.cart .cell{display:flex; align-items:center; justify-content:center; height:38px; border-radius:6px; background:var(--bg); border:1px solid var(--line); color:var(--muted)}
+.band.alt .cart .cell{background:var(--bg)}
+.cart .cell.m{background:var(--ok-soft); border-color:var(--ok); color:var(--ok); font-weight:700}
+.cart.animating .cell{animation:pop .4s both}
+.cart.filtering .cell:not(.m){opacity:.25}
+.cart .cell{transition:opacity .5s}
+@keyframes pop{from{transform:scale(.6); opacity:0}to{transform:none; opacity:1}}
+.formula{display:flex; flex-wrap:wrap; gap:10px 18px; align-items:center; font-family:var(--f-mono); font-size:15px}
+.formula strong{font-size:28px; font-family:var(--f-display)}
+
+/* anatomy */
+.anatomy{display:flex; flex-direction:column; gap:10px}
+.anat-row{display:flex; flex-wrap:wrap; gap:6px 16px; align-items:baseline; padding:12px 16px; border-radius:10px; background:var(--surface); border:1px solid var(--line)}
+.band.alt .anat-row{background:var(--bg)}
+.anat-row code{font-weight:700; min-width:230px}
+.anat-row span{color:var(--muted); font-size:16px; flex:1 1 260px}
+
+/* cards */
+.cards{display:flex; flex-wrap:wrap; gap:18px}
+.card{flex:1 1 300px; min-width:0; border:1px solid var(--line); border-radius:14px; background:var(--surface); padding:20px; display:flex; flex-direction:column; gap:12px}
+.band.alt .card{background:var(--bg)}
+.card .tag{font-family:var(--f-mono); font-size:12px; font-weight:700; letter-spacing:.06em; text-transform:uppercase}
+.card .tag.bad{color:var(--bad)} .card .tag.ok{color:var(--ok)}
+.card pre.sql{font-size:13.5px; padding:14px 16px}
+.err{font-family:var(--f-mono); font-size:13px; color:var(--bad); background:var(--bad-soft); padding:8px 12px; border-radius:8px; overflow-x:auto}
+
+details{border:1px solid var(--line); border-radius:10px; background:var(--surface)}
+.band.alt details{background:var(--bg)}
+summary{cursor:pointer; padding:12px 16px; font-weight:600; min-height:44px; display:flex; align-items:center}
+details[open] summary{border-bottom:1px solid var(--line)}
+details > div{padding:14px 16px}
+
+/* MER · MR · físico · SQL */
+.pipeline{display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; font-family:var(--f-display); font-weight:700; font-size:17px}
+.pipeline span{display:flex; flex-direction:column; padding:8px 14px; border-radius:10px; border:1.5px solid var(--ink); background:var(--surface); line-height:1.2}
+.pipeline small{font-family:var(--f-body); font-weight:400; font-size:13px; color:var(--muted)}
+.pipeline i{font-style:normal; color:var(--muted)}
+.models{display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 480px), 1fr)); gap:18px}
+.mcard{border:1px solid var(--line); border-radius:14px; background:var(--surface); display:flex; flex-direction:column; min-width:0}
+.band.alt .mcard{background:var(--bg)}
+.mcard-h{display:flex; align-items:center; gap:12px; padding:12px 16px; border-bottom:1px solid var(--line)}
+.mcard-h h3{font-size:17px}
+.mtag{font-family:var(--f-mono); font-size:12px; font-weight:700; letter-spacing:.06em; padding:3px 9px; border-radius:6px; background:var(--ink); color:var(--surface)}
+.mcard-b{padding:16px; display:flex; flex-direction:column; gap:14px; min-width:0; overflow-x:auto}
+.mcard-b svg.mer{display:block; width:100%; min-width:460px; height:auto}
+.mnote{font-size:15px; color:var(--muted)}
+.mr{font-family:var(--f-mono); font-size:15px; line-height:1.9; display:flex; flex-direction:column; gap:4px}
+.mr u{text-decoration-thickness:2px; text-underline-offset:3px; font-weight:700}
+.fk{font-style:italic; font-weight:700; color:var(--tc)}
+.fk::after{content:"#"}
+.herencia{display:block; padding:10px 14px; border-radius:10px; background:var(--tcs); font-size:15px; font-weight:600}
+.herencia::before{content:"↳ "; font-size:18px; color:var(--tc)}
+.phys{display:flex; flex-wrap:wrap; gap:12px}
+.ptable{flex:1 1 250px; min-width:0; border:1.5px solid var(--tc); border-radius:8px; overflow:hidden; font-family:var(--f-mono); font-size:13px; background:var(--surface)}
+.ptable-h{background:var(--tcs); color:var(--tc); font-weight:700; padding:6px 10px; border-bottom:1px solid var(--line)}
+.pkfk{font-size:9px; white-space:nowrap}
+.pcol{display:grid; grid-template-columns:44px minmax(min-content,1fr) auto 30px; gap:10px; align-items:center; padding:5px 10px; border-bottom:1px solid var(--line)}
+.pcol:last-child{border-bottom:0}
+.pcol em{font-style:normal; color:var(--muted)}
+.pcol small{font-size:10px; font-weight:700; color:var(--muted); text-align:right}
+.pcol.is-fk{background:var(--tcs)}
+.pk-k,.fk-k{font-size:10px; font-weight:700; padding:1px 4px; border-radius:4px; text-align:center}
+.pk-k{background:var(--ink); color:var(--surface)}
+.fk-k{border:1px solid var(--tc); color:var(--tc)}
+pre.sql.small{font-size:13px; padding:14px 16px}
+.cmpwrap{border:1px solid var(--line); border-radius:12px; background:var(--surface)}
+.band.alt .cmpwrap{background:var(--bg)}
+table.cmp{width:100%; min-width:620px; border-collapse:collapse; font-size:16px}
+table.cmp caption{text-align:left; font-family:var(--f-display); font-weight:700; font-size:17px; padding:14px 16px 4px}
+table.cmp th, table.cmp td{text-align:left; vertical-align:top; padding:10px 16px; border-top:1px solid var(--line)}
+table.cmp thead th{font-size:13px; font-family:var(--f-mono); color:var(--muted); font-weight:500}
+table.cmp tbody th{font-family:var(--f-mono); font-weight:700; white-space:nowrap}
+
+/* quiz */
+.quiz{display:flex; flex-direction:column; gap:18px}
+.q{border:1px solid var(--line); border-radius:14px; padding:18px 20px; background:var(--surface); display:flex; flex-direction:column; gap:12px}
+.band.alt .q{background:var(--bg)}
+.q fieldset{border:0; margin:0; padding:0; display:flex; flex-wrap:wrap; gap:8px}
+.q legend{font-weight:700; font-size:18px; padding:0; margin-bottom:10px}
+.opt{display:flex; align-items:center; gap:8px; min-height:44px; padding:0 14px; border-radius:10px; border:1.5px solid var(--line); cursor:pointer; font-size:16px; background:var(--surface)}
+.opt input{accent-color:var(--ink); width:18px; height:18px}
+.opt.right{border-color:var(--ok); background:var(--ok-soft)}
+.opt.wrong{border-color:var(--bad); background:var(--bad-soft)}
+.fb{font-size:16px}
+.fb.ok{color:var(--ok)} .fb.bad{color:var(--bad)}
+.score{font-family:var(--f-display); font-weight:700; font-size:20px}
+
+.copyrow{display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap}
+footer{border-top:1px solid var(--line); padding-block:28px; color:var(--muted); font-size:15px}
+footer .wrap{display:flex; flex-wrap:wrap; justify-content:space-between; gap:10px}
+
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation:none!important; transition:none!important}
+}
+</style>
+</head>
+<body>
+
+
+<nav class="nav" aria-label="Secciones">
+  <div class="wrap">
+    <a class="brand" href="#inicio">
+      <svg width="26" height="20" viewBox="0 0 26 20" aria-hidden="true"><circle cx="9" cy="10" r="8" fill="none" stroke="var(--a)" stroke-width="2"/><circle cx="17" cy="10" r="8" fill="none" stroke="var(--b)" stroke-width="2"/></svg>
+      INNER JOIN
+    </a>
+    <ul>
+      <li><a href="#idea">La idea</a></li>
+      <li><a href="#dos">Dos tablas</a></li>
+      <li><a href="#sintaxis">Sintaxis</a></li>
+      <li><a href="#tres">Tres tablas</a></li>
+      <li><a href="#errores">Errores comunes</a></li>
+      <li><a href="#practica">Práctica</a></li>
+    </ul>
+  </div>
+</nav>
+
+<header class="hero" id="inicio">
+  <div class="wrap">
+    <div class="hero-text">
+      <p class="eyebrow">Base de datos · SQL · caso BiblioUTU</p>
+      <h1>Unir tablas con <em>INNER JOIN</em></h1>
+      <p class="lead">Los datos de una biblioteca viven repartidos en varias tablas. INNER JOIN las vuelve a juntar: combina cada fila con las filas de la otra tabla que tienen la misma clave y descarta las que no tienen pareja.</p>
+      <div class="chips" aria-label="Temas de la lección">
+        <span class="chip">clave primaria</span><span class="chip">clave foránea</span><span class="chip">ON</span><span class="chip">alias</span><span class="chip">2 tablas</span><span class="chip">3 tablas</span>
+      </div>
+    </div>
+    <div class="hero-art">
+      <svg viewBox="0 0 460 300" role="img" aria-label="Diagrama de Venn: la tabla libro y la tabla autor se superponen; INNER JOIN devuelve solo la zona común">
+        <defs>
+          <clipPath id="clipL"><circle cx="175" cy="150" r="115"/></clipPath>
+          <pattern id="hatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="8" height="8" style="fill:var(--ok-soft)"/><line x1="0" y1="0" x2="0" y2="8" style="stroke:var(--ok)" stroke-width="2.5"/></pattern>
+        </defs>
+        <g class="venn-l"><circle cx="175" cy="150" r="115" style="fill:var(--a-soft); stroke:var(--a)" stroke-width="3"/></g>
+        <g class="venn-r"><circle cx="285" cy="150" r="115" style="fill:var(--b-soft); stroke:var(--b)" stroke-width="3"/></g>
+        <g class="venn-mid"><circle cx="285" cy="150" r="115" clip-path="url(#clipL)" fill="url(#hatch)" style="stroke:var(--ok)" stroke-width="3"/></g>
+        <text x="110" y="155" text-anchor="middle" style="fill:var(--a); font:700 20px var(--f-mono)">libro</text>
+        <text x="350" y="155" text-anchor="middle" style="fill:var(--b); font:700 20px var(--f-mono)">autor</text>
+        <rect x="178" y="130" width="104" height="40" rx="8" style="fill:var(--surface); stroke:var(--ok)" stroke-width="2"/>
+        <text x="230" y="156" text-anchor="middle" style="fill:var(--ok); font:700 14px var(--f-mono)">INNER JOIN</text>
+        <text x="230" y="292" text-anchor="middle" style="fill:var(--muted); font:500 14px var(--f-mono)">ON l.id_autor = a.id_autor</text>
+      </svg>
+    </div>
+  </div>
+</header>
+
+<!-- 1 LA IDEA -->
+<section class="band alt" id="idea">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="step-n">1 · LA IDEA</p>
+      <h2>Combinar todo, quedarse con lo que coincide</h2>
+      <p class="prose">En BiblioUTU cada libro guarda el número de su autor en la columna <span class="inline">id_autor</span> (clave foránea), y la tabla <span class="tname t-autor">autor</span> guarda el nombre con ese mismo número como clave primaria. Así el nombre de Horacio Quiroga se escribe una sola vez, aunque tenga varios libros.</p>
+    </div>
+    <div class="split">
+      <figure>
+        <div class="diagram">
+          <svg viewBox="0 0 620 210" role="img" aria-label="Diagrama de tablas: un autor tiene muchos libros; libro.id_autor apunta a autor.id_autor">
+            <g>
+              <rect x="20" y="20" width="200" height="170" rx="10" style="fill:var(--surface); stroke:var(--b)" stroke-width="2"/>
+              <rect x="20" y="20" width="200" height="38" rx="10" style="fill:var(--b-soft)"/>
+              <text x="36" y="45" style="fill:var(--b); font:700 16px var(--f-mono)">autor</text>
+              <text x="36" y="86" style="fill:var(--ink); font:700 14px var(--f-mono)">id_autor  PK</text>
+              <text x="36" y="116" style="fill:var(--ink); font:400 14px var(--f-mono)">nombre</text>
+              <text x="36" y="146" style="fill:var(--ink); font:400 14px var(--f-mono)">pais</text>
+            </g>
+            <g>
+              <rect x="400" y="20" width="200" height="170" rx="10" style="fill:var(--surface); stroke:var(--a)" stroke-width="2"/>
+              <rect x="400" y="20" width="200" height="38" rx="10" style="fill:var(--a-soft)"/>
+              <text x="416" y="45" style="fill:var(--a); font:700 16px var(--f-mono)">libro</text>
+              <text x="416" y="86" style="fill:var(--ink); font:700 14px var(--f-mono)">id_libro  PK</text>
+              <text x="416" y="116" style="fill:var(--ink); font:400 14px var(--f-mono)">titulo</text>
+              <text x="416" y="146" style="fill:var(--ink); font:400 14px var(--f-mono)">anio</text>
+              <text x="416" y="176" style="fill:var(--a); font:700 14px var(--f-mono)">id_autor  FK</text>
+            </g>
+            <path d="M220 82 H300 V172 H400" fill="none" style="stroke:var(--muted)" stroke-width="2"/>
+            <text x="232" y="74" style="fill:var(--muted); font:700 14px var(--f-mono)">1</text>
+            <path d="M386 160 L400 172 L386 184" fill="none" style="stroke:var(--muted)" stroke-width="2"/>
+            <text x="370" y="164" style="fill:var(--muted); font:700 14px var(--f-mono)">N</text>
+            <text x="310" y="130" style="fill:var(--muted); font:400 12px var(--f-body)">un autor tiene</text>
+            <text x="310" y="146" style="fill:var(--muted); font:400 12px var(--f-body)">muchos libros</text>
+          </svg>
+        </div>
+        <figcaption>La flecha une <b>libro.id_autor</b> (FK) con <b>autor.id_autor</b> (PK). Esa es la condición que va en el ON.</figcaption>
+      </figure>
+      <div style="display:flex; flex-direction:column; gap:14px">
+        <p class="prose">Pensalo en dos movimientos. Primero se arma cada combinación posible: 5 libros × 4 autores = 20 parejas. Después el <span class="inline">ON</span> se queda solo con las parejas donde los números coinciden.</p>
+        <div class="formula" aria-live="polite">
+          <span><strong id="cartTotal">20</strong> combinaciones</span>
+          <span>→</span>
+          <span><strong id="cartOk" style="color:var(--ok)">4</strong> cumplen el ON</span>
+        </div>
+        <div class="controls">
+          <button class="btn primary" type="button" id="cartPlay">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.5v11l9-5.5z" fill="currentColor"/></svg>Animar las combinaciones</button>
+        </div>
+      </div>
+    </div>
+    <div class="diagram" style="padding:16px">
+      <div class="cart" id="cart" role="img" aria-label="Cuadrícula de 5 libros por 4 autores; 4 celdas marcadas cumplen la condición ON"></div>
+    </div>
+  </div>
+</section>
+
+<!-- 2 DOS TABLAS -->
+<section class="band" id="dos">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="step-n">2 · DOS TABLAS · HERENCIA</p>
+      <h2>Persona y Alumno: el JOIN reconstruye la herencia</h2>
+      <p class="prose">Un alumno <b>es una</b> persona: tiene código y nombre como cualquier persona, y además teléfono y grupo. En el MER eso se dibuja como una generalización. Al pasar al MR, <span class="tname t-alumno">alumno</span> <b>hereda</b> la clave <span class="inline">cod</span> de <span class="tname t-persona">persona</span>, y para ver al alumno completo hay que volver a unir las dos tablas con un INNER JOIN.</p>
+    </div>
+
+    <div class="pipeline" aria-hidden="true"><span>MER<small>conceptual</small></span><i>→</i><span>MR<small>lógico</small></span><i>→</i><span>Físico<small>MySQL</small></span><i>→</i><span>SQL<small>implementación</small></span></div>
+    <div class="models">
+      <article class="mcard">
+        <div class="mcard-h"><span class="mtag">MER</span><h3>Modelo Entidad-Relación</h3></div>
+        <div class="mcard-b">
+          <svg class="mer" viewBox="0 0 640 300" role="img" aria-label="MER: entidad PERSONA con atributos cod (clave) y nombre; triángulo ES de generalización; entidad ALUMNO, que hereda de PERSONA, con atributos tel y grupo">
+            <g style="stroke:var(--muted)" stroke-width="1.5">
+              <line x1="215" y1="52" x2="262" y2="98"/><line x1="425" y1="52" x2="378" y2="98"/>
+              <line x1="215" y1="252" x2="255" y2="258"/><line x1="425" y1="252" x2="385" y2="258"/>
+            </g>
+            <g style="stroke:var(--ink)" stroke-width="2">
+              <line x1="320" y1="130" x2="320" y2="158"/><line x1="320" y1="214" x2="320" y2="240"/>
+            </g>
+            <g style="fill:var(--surface); stroke:var(--muted)" stroke-width="1.5">
+              <ellipse cx="170" cy="40" rx="48" ry="20"/><ellipse cx="470" cy="40" rx="52" ry="20"/>
+              <ellipse cx="170" cy="252" rx="46" ry="20"/><ellipse cx="470" cy="252" rx="50" ry="20"/>
+            </g>
+            <g style="font:500 13px var(--f-mono); fill:var(--ink)" text-anchor="middle">
+              <text x="170" y="45" text-decoration="underline" font-weight="700">cod</text><text x="470" y="45">nombre</text>
+              <text x="170" y="257">tel</text><text x="470" y="257">grupo</text>
+            </g>
+            <rect x="255" y="90" width="130" height="40" style="fill:var(--a-soft); stroke:var(--a)" stroke-width="2"/>
+            <text x="320" y="115" text-anchor="middle" style="fill:var(--a); font:700 15px var(--f-mono)">PERSONA</text>
+            <polygon points="320,158 284,214 356,214" style="fill:var(--surface); stroke:var(--ink)" stroke-width="2"/>
+            <text x="320" y="204" text-anchor="middle" style="fill:var(--ink); font:700 13px var(--f-body)">ES</text>
+            <rect x="255" y="240" width="130" height="40" style="fill:var(--c-soft); stroke:var(--c)" stroke-width="2"/>
+            <text x="320" y="265" text-anchor="middle" style="fill:var(--c); font:700 15px var(--f-mono)">ALUMNO</text>
+            <text x="372" y="190" style="fill:var(--muted); font:400 12px var(--f-body)">un alumno es</text>
+            <text x="372" y="205" style="fill:var(--muted); font:400 12px var(--f-body)">una persona</text>
+          </svg>
+          <p class="mnote">El triángulo <b>ES</b> marca la generalización: PERSONA es la entidad general y ALUMNO la especializada. <b>ALUMNO no repite cod ni nombre</b>: los hereda de PERSONA y solo agrega tel y grupo.</p>
+        </div>
+      </article>
+      <article class="mcard">
+        <div class="mcard-h"><span class="mtag">MR</span><h3>Modelo Relacional</h3></div>
+        <div class="mcard-b">
+          <div class="mr">
+            <p><span class="tname t-persona">PERSONA</span> (<u>cod</u>, nombre)</p>
+            <p><span class="tname t-alumno">ALUMNO</span> (<u><span class="fk t-persona">cod</span></u>, tel, grupo)</p>
+          </div>
+          <div class="herencia t-persona">
+            <span class="fk">cod</span> se hereda de PERSONA hacia ALUMNO: es PK y FK a la vez
+          </div>
+          <p class="mnote">Cada alumno usa el <b>mismo cod</b> que su fila en persona, así que la relación es 1 a 1. Una persona puede no ser alumno (un docente, por ejemplo), pero no hay alumno sin persona. Subrayado: clave primaria. <i>Cursiva y #</i>: clave foránea.</p>
+        </div>
+      </article>
+      <article class="mcard">
+        <div class="mcard-h"><span class="mtag">FÍSICO</span><h3>Modelo físico (MySQL)</h3></div>
+        <div class="mcard-b">
+          <div class="phys">
+            <div class="ptable t-persona">
+              <div class="ptable-h">persona</div>
+              <div class="pcol"><span class="pk-k">PK</span><b>cod</b><em>INT</em><small>AI</small></div>
+              <div class="pcol"><span></span><span>nombre</span><em>VARCHAR(80)</em><small>NN</small></div>
+            </div>
+            <div class="ptable t-alumno">
+              <div class="ptable-h">alumno</div>
+              <div class="pcol is-fk"><span class="pk-k pkfk">PK FK</span><b>cod</b><em>INT</em><small>NN</small></div>
+              <div class="pcol"><span></span><span>tel</span><em>VARCHAR(20)</em><small></small></div>
+              <div class="pcol"><span></span><span>grupo</span><em>VARCHAR(20)</em><small>NN</small></div>
+            </div>
+          </div>
+          <p class="mnote"><span class="inline">alumno.cod</span> → <span class="inline">persona.cod</span>. En alumno, cod <b>no lleva AUTO_INCREMENT</b>: el número lo pone persona y alumno lo copia. Con <span class="inline">ON DELETE CASCADE</span>, si se borra una persona, su fila en alumno se borra sola.</p>
+        </div>
+      </article>
+      <article class="mcard">
+        <div class="mcard-h"><span class="mtag">SQL</span><h3>Implementación</h3></div>
+        <div class="mcard-b">
+<pre class="sql small"><span class="kw">CREATE TABLE</span> persona (
+  cod    <span class="kw">INT AUTO_INCREMENT PRIMARY KEY</span>,
+  nombre <span class="kw">VARCHAR</span>(80) <span class="kw">NOT NULL</span>
+);
+<span class="kw">CREATE TABLE</span> alumno (
+  cod   <span class="kw">INT PRIMARY KEY</span>,
+  tel   <span class="kw">VARCHAR</span>(20),
+  grupo <span class="kw">VARCHAR</span>(20) <span class="kw">NOT NULL</span>,
+  <span class="kw">FOREIGN KEY</span> (cod) <span class="kw">REFERENCES</span> persona(cod)
+    <span class="kw">ON DELETE CASCADE</span>
+);
+<span class="cm">-- consultar: el alumno completo = persona + alumno</span>
+<span class="kw">SELECT</span> p.cod, p.nombre, a.tel, a.grupo
+<span class="kw">FROM</span> persona p
+<span class="kw">INNER JOIN</span> alumno a <span class="kw">ON</span> p.cod = a.cod;</pre>
+        </div>
+      </article>
+    </div>
+    <div class="scroll cmpwrap">
+      <table class="cmp">
+        <caption>La herencia Persona → Alumno en cada modelo</caption>
+        <thead><tr><th scope="col">Modelo</th><th scope="col">Cómo aparece la herencia</th><th scope="col">Dónde está cod</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">MER</th><td>Triángulo <b>ES</b> (generalización): ALUMNO es una PERSONA.</td><td>Solo en PERSONA, como atributo clave.</td></tr>
+          <tr><th scope="row">MR</th><td>Dos relaciones; ALUMNO hereda la clave de PERSONA.</td><td>En PERSONA (PK) y en ALUMNO, donde es <b>PK y FK</b>.</td></tr>
+          <tr><th scope="row">Físico</th><td>FOREIGN KEY de alumno hacia persona, relación 1 a 1, con ON DELETE CASCADE: borrar la persona borra también al alumno.</td><td><span class="inline">alumno.cod INT</span>, sin AUTO_INCREMENT.</td></tr>
+          <tr><th scope="row">SQL</th><td><span class="inline">REFERENCES</span> al crear; el <span class="inline">INNER JOIN</span> vuelve a juntar las dos partes del alumno.</td><td><span class="inline">ON p.cod = a.cod</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>La consulta, fila por fila</h3>
+    <p class="prose">Para cada fila de <span class="tname t-persona">persona</span>, la base recorre <span class="tname t-alumno">alumno</span> y compara <span class="inline">cod</span>. Solo las personas que también son alumnos llegan al resultado. Tocá <b>Reproducir</b> o avanzá con <b>Paso</b>.</p>
+<pre class="sql" id="q2"><span data-part="select"><span class="kw">SELECT</span> <span class="al-a">p</span>.cod, <span class="al-a">p</span>.nombre, <span class="al-c">a</span>.tel, <span class="al-c">a</span>.grupo</span>
+<span data-part="from"><span class="kw">FROM</span> persona <span class="al-a">p</span></span>
+<span data-part="join"><span class="kw">INNER JOIN</span> alumno <span class="al-c">a</span></span>
+  <span data-part="on"><span class="kw">ON</span> <span class="al-a">p</span>.cod = <span class="al-c">a</span>.cod</span>;</pre>
+    <div class="player" id="p2"></div>
+  </div>
+</section>
+
+<!-- 3 SINTAXIS -->
+<section class="band alt" id="sintaxis">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="step-n">3 · SINTAXIS</p>
+      <h2>Las partes de la consulta</h2>
+    </div>
+    <div class="anatomy">
+      <div class="anat-row"><code>SELECT l.titulo, a.nombre</code><span>Qué columnas querés ver. Con el alias delante sabés de qué tabla sale cada una.</span></div>
+      <div class="anat-row"><code>FROM libro l</code><span>La primera tabla. La <b>l</b> es un alias: un nombre corto para no escribir <span class="inline">libro.</span> cada vez.</span></div>
+      <div class="anat-row"><code>INNER JOIN autor a</code><span>La tabla que se suma. En MySQL <span class="inline">JOIN</span> solo, sin INNER, hace exactamente lo mismo.</span></div>
+      <div class="anat-row"><code>ON l.id_autor = a.id_autor</code><span>La condición de unión: clave foránea de un lado, clave primaria del otro.</span></div>
+      <div class="anat-row"><code>WHERE a.pais = 'Uruguay'</code><span>Opcional. Filtra el resultado ya unido, como en cualquier SELECT.</span></div>
+      <div class="anat-row"><code>ORDER BY a.nombre</code><span>Opcional. Ordena el resultado final.</span></div>
+    </div>
+    <div class="split">
+      <div style="display:flex; flex-direction:column; gap:10px">
+        <h3>Sin alias</h3>
+<pre class="sql"><span class="kw">SELECT</span> libro.titulo, autor.nombre
+<span class="kw">FROM</span> libro
+<span class="kw">INNER JOIN</span> autor
+  <span class="kw">ON</span> libro.id_autor = autor.id_autor;</pre>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:10px">
+        <h3>Con alias, filtro y orden</h3>
+<pre class="sql"><span class="kw">SELECT</span> <span class="al-a">l</span>.titulo, <span class="al-b">a</span>.nombre
+<span class="kw">FROM</span> libro <span class="al-a">l</span>
+<span class="kw">JOIN</span> autor <span class="al-b">a</span> <span class="kw">ON</span> <span class="al-a">l</span>.id_autor = <span class="al-b">a</span>.id_autor
+<span class="kw">WHERE</span> <span class="al-b">a</span>.pais = <span class="str">'Uruguay'</span>
+<span class="kw">ORDER BY</span> <span class="al-b">a</span>.nombre;</pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 4 TRES TABLAS -->
+<section class="band" id="tres">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="step-n">4 · TRES TABLAS</p>
+      <h2>La tabla del medio conecta las otras dos</h2>
+      <p class="prose">Un préstamo dice <i>quién</i> se llevó <i>qué libro</i> y <i>cuándo</i>, pero solo con números. Para leerlo con nombres hay que unir <span class="tname t-prestamo">prestamo</span> con <span class="tname t-socio">socio</span> y con <span class="tname t-libro">libro</span>. Con tres tablas se escriben dos JOIN: la base une las dos primeras y al resultado le suma la tercera.</p>
+    </div>
+
+    <div class="pipeline" aria-hidden="true"><span>MER<small>conceptual</small></span><i>→</i><span>MR<small>lógico</small></span><i>→</i><span>Físico<small>MySQL</small></span><i>→</i><span>SQL<small>implementación</small></span></div>
+    <div class="models">
+      <article class="mcard">
+        <div class="mcard-h"><span class="mtag">MER</span><h3>Modelo Entidad-Relación</h3></div>
+        <div class="mcard-b">
+          <svg class="mer" viewBox="0 0 640 260" role="img" aria-label="MER: entidad SOCIO con atributos id_socio, nombre y grupo; relación pide prestado, N a M, con atributo fecha; entidad LIBRO con atributos id_libro, titulo y anio">
+            <g style="stroke:var(--muted)" stroke-width="1.5">
+              <line x1="65" y1="60" x2="85" y2="110"/><line x1="165" y1="60" x2="145" y2="110"/><line x1="105" y1="202" x2="105" y2="150"/>
+              <line x1="480" y1="60" x2="500" y2="110"/><line x1="580" y1="60" x2="565" y2="110"/><line x1="535" y1="202" x2="535" y2="150"/>
+              <line x1="320" y1="172" x2="320" y2="210"/>
+              <line x1="170" y1="130" x2="235" y2="130" stroke-width="2"/><line x1="405" y1="130" x2="470" y2="130" stroke-width="2"/>
+            </g>
+            <g style="fill:var(--surface); stroke:var(--muted)" stroke-width="1.5">
+              <ellipse cx="65" cy="40" rx="52" ry="20"/><ellipse cx="165" cy="40" rx="48" ry="20"/><ellipse cx="105" cy="222" rx="44" ry="20"/>
+              <ellipse cx="480" cy="40" rx="52" ry="20"/><ellipse cx="580" cy="40" rx="44" ry="20"/><ellipse cx="535" cy="222" rx="40" ry="20"/>
+              <ellipse cx="320" cy="230" rx="44" ry="20"/>
+            </g>
+            <g style="font:500 13px var(--f-mono); fill:var(--ink)" text-anchor="middle">
+              <text x="65" y="45" text-decoration="underline" font-weight="700">id_socio</text><text x="165" y="45">nombre</text><text x="105" y="227">grupo</text>
+              <text x="480" y="45" text-decoration="underline" font-weight="700">id_libro</text><text x="580" y="45">titulo</text><text x="535" y="227">anio</text>
+              <text x="320" y="235">fecha</text>
+            </g>
+            <rect x="40" y="110" width="130" height="40" style="fill:var(--c-soft); stroke:var(--c)" stroke-width="2"/>
+            <text x="105" y="135" text-anchor="middle" style="fill:var(--c); font:700 15px var(--f-mono)">SOCIO</text>
+            <rect x="470" y="110" width="130" height="40" style="fill:var(--a-soft); stroke:var(--a)" stroke-width="2"/>
+            <text x="535" y="135" text-anchor="middle" style="fill:var(--a); font:700 15px var(--f-mono)">LIBRO</text>
+            <polygon points="320,88 405,130 320,172 235,130" style="fill:var(--d-soft); stroke:var(--d)" stroke-width="2"/>
+            <text x="320" y="127" text-anchor="middle" style="fill:var(--d); font:700 13px var(--f-body)">pide</text>
+            <text x="320" y="143" text-anchor="middle" style="fill:var(--d); font:700 13px var(--f-body)">prestado</text>
+            <text x="200" y="120" text-anchor="middle" style="fill:var(--ink); font:700 16px var(--f-mono)">N</text>
+            <text x="440" y="120" text-anchor="middle" style="fill:var(--ink); font:700 16px var(--f-mono)">M</text>
+          </svg>
+          <p class="mnote">Un socio pide muchos libros y un libro lo piden muchos socios: relación <b>N:M</b>. La <b>fecha</b> es atributo de la relación, no de una entidad. En el MER <b>no existe PRESTAMO</b> como entidad.</p>
+        </div>
+      </article>
+      <article class="mcard">
+        <div class="mcard-h"><span class="mtag">MR</span><h3>Modelo Relacional</h3></div>
+        <div class="mcard-b">
+          <div class="mr">
+            <p><span class="tname t-socio">SOCIO</span> (<u>id_socio</u>, nombre, grupo)</p>
+            <p><span class="tname t-libro">LIBRO</span> (<u>id_libro</u>, titulo, anio, <span class="fk t-autor">id_autor</span>)</p>
+            <p><span class="tname t-prestamo">PRESTAMO</span> (<u>id_prestamo</u>, <span class="fk t-socio">id_socio</span>, <span class="fk t-libro">id_libro</span>, fecha)</p>
+          </div>
+          <div class="herencia t-prestamo">
+            el rombo N:M se convierte en la tabla PRESTAMO, que hereda <span class="fk t-socio">id_socio</span> y <span class="fk t-libro">id_libro</span>
+          </div>
+          <p class="mnote">Una relación N:M siempre genera una tabla nueva con las claves de las dos entidades y los atributos de la relación. Se agrega <span class="inline">id_prestamo</span> como clave propia porque un socio puede pedir el mismo libro más de una vez.</p>
+        </div>
+      </article>
+      <article class="mcard">
+        <div class="mcard-h"><span class="mtag">FÍSICO</span><h3>Modelo físico (MySQL)</h3></div>
+        <div class="mcard-b">
+          <div class="phys">
+            <div class="ptable t-socio">
+              <div class="ptable-h">socio</div>
+              <div class="pcol"><span class="pk-k">PK</span><b>id_socio</b><em>INT</em><small>AI</small></div>
+              <div class="pcol"><span></span><span>nombre</span><em>VARCHAR(80)</em><small>NN</small></div>
+              <div class="pcol"><span></span><span>grupo</span><em>VARCHAR(20)</em><small></small></div>
+            </div>
+            <div class="ptable t-prestamo">
+              <div class="ptable-h">prestamo</div>
+              <div class="pcol"><span class="pk-k">PK</span><b>id_prestamo</b><em>INT</em><small>AI</small></div>
+              <div class="pcol is-fk"><span class="fk-k">FK</span><b>id_socio</b><em>INT</em><small>NN</small></div>
+              <div class="pcol is-fk"><span class="fk-k">FK</span><b>id_libro</b><em>INT</em><small>NN</small></div>
+              <div class="pcol"><span></span><span>fecha</span><em>DATE</em><small>NN</small></div>
+            </div>
+            <div class="ptable t-libro">
+              <div class="ptable-h">libro</div>
+              <div class="pcol"><span class="pk-k">PK</span><b>id_libro</b><em>INT</em><small>AI</small></div>
+              <div class="pcol"><span></span><span>titulo</span><em>VARCHAR(120)</em><small>NN</small></div>
+              <div class="pcol"><span></span><span>anio</span><em>INT</em><small></small></div>
+              <div class="pcol is-fk"><span class="fk-k">FK</span><b>id_autor</b><em>INT</em><small>NULL</small></div>
+            </div>
+          </div>
+          <p class="mnote"><span class="inline">prestamo.id_socio</span> → <span class="inline">socio.id_socio</span> y <span class="inline">prestamo.id_libro</span> → <span class="inline">libro.id_libro</span>. Las dos FK son NOT NULL: no hay préstamo sin socio ni sin libro.</p>
+        </div>
+      </article>
+      <article class="mcard">
+        <div class="mcard-h"><span class="mtag">SQL</span><h3>Implementación</h3></div>
+        <div class="mcard-b">
+<pre class="sql small"><span class="kw">CREATE TABLE</span> socio (
+  id_socio <span class="kw">INT AUTO_INCREMENT PRIMARY KEY</span>,
+  nombre   <span class="kw">VARCHAR</span>(80) <span class="kw">NOT NULL</span>,
+  grupo    <span class="kw">VARCHAR</span>(20)
+);
+<span class="kw">CREATE TABLE</span> prestamo (
+  id_prestamo <span class="kw">INT AUTO_INCREMENT PRIMARY KEY</span>,
+  id_socio    <span class="kw">INT NOT NULL</span>,
+  id_libro    <span class="kw">INT NOT NULL</span>,
+  fecha       <span class="kw">DATE NOT NULL</span>,
+  <span class="kw">FOREIGN KEY</span> (id_socio) <span class="kw">REFERENCES</span> socio(id_socio),
+  <span class="kw">FOREIGN KEY</span> (id_libro) <span class="kw">REFERENCES</span> libro(id_libro)
+);
+<span class="cm">-- consultar: una FK por cada ON</span>
+<span class="kw">SELECT</span> s.nombre, l.titulo, p.fecha
+<span class="kw">FROM</span> prestamo p
+<span class="kw">INNER JOIN</span> socio s <span class="kw">ON</span> p.id_socio = s.id_socio
+<span class="kw">INNER JOIN</span> libro l <span class="kw">ON</span> p.id_libro = l.id_libro;</pre>
+        </div>
+      </article>
+    </div>
+    <div class="scroll cmpwrap">
+      <table class="cmp">
+        <caption>La relación socio–libro en cada modelo</caption>
+        <thead><tr><th scope="col">Modelo</th><th scope="col">Cómo aparece la relación</th><th scope="col">Dónde están las claves</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">MER</th><td>Rombo <b>pide prestado</b> entre SOCIO y LIBRO, cardinalidad <b>N:M</b>, con el atributo fecha.</td><td>id_socio en SOCIO, id_libro en LIBRO.</td></tr>
+          <tr><th scope="row">MR</th><td>El rombo se transforma en la tabla <b>PRESTAMO</b>.</td><td>PRESTAMO <b>hereda</b> las dos claves como FK y suma id_prestamo como PK.</td></tr>
+          <tr><th scope="row">Físico</th><td>Tabla prestamo con dos restricciones FOREIGN KEY.</td><td><span class="inline">id_socio INT NN</span>, <span class="inline">id_libro INT NN</span></td></tr>
+          <tr><th scope="row">SQL</th><td>Dos <span class="inline">REFERENCES</span> al crear, dos <span class="inline">INNER JOIN</span> al consultar.</td><td><span class="inline">ON p.id_socio = s.id_socio</span><br><span class="inline">ON p.id_libro = l.id_libro</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>La consulta, fila por fila</h3>
+    <figure>
+      <div class="diagram">
+        <svg viewBox="0 0 760 200" role="img" aria-label="Diagrama: socio uno a muchos prestamo, libro uno a muchos prestamo; prestamo está en el medio con dos claves foráneas">
+          <rect x="16" y="24" width="190" height="140" rx="10" style="fill:var(--surface); stroke:var(--c)" stroke-width="2"/>
+          <rect x="16" y="24" width="190" height="38" rx="10" style="fill:var(--c-soft)"/>
+          <text x="32" y="49" style="fill:var(--c); font:700 16px var(--f-mono)">socio</text>
+          <text x="32" y="90" style="fill:var(--ink); font:700 14px var(--f-mono)">id_socio  PK</text>
+          <text x="32" y="118" style="fill:var(--ink); font:400 14px var(--f-mono)">nombre</text>
+          <text x="32" y="146" style="fill:var(--ink); font:400 14px var(--f-mono)">grupo</text>
+
+          <rect x="285" y="14" width="190" height="172" rx="10" style="fill:var(--surface); stroke:var(--d)" stroke-width="2"/>
+          <rect x="285" y="14" width="190" height="38" rx="10" style="fill:var(--d-soft)"/>
+          <text x="301" y="39" style="fill:var(--d); font:700 16px var(--f-mono)">prestamo</text>
+          <text x="301" y="80" style="fill:var(--ink); font:700 14px var(--f-mono)">id_prestamo  PK</text>
+          <text x="301" y="108" style="fill:var(--d); font:700 14px var(--f-mono)">id_socio  FK</text>
+          <text x="301" y="136" style="fill:var(--d); font:700 14px var(--f-mono)">id_libro  FK</text>
+          <text x="301" y="164" style="fill:var(--ink); font:400 14px var(--f-mono)">fecha</text>
+
+          <rect x="554" y="24" width="190" height="140" rx="10" style="fill:var(--surface); stroke:var(--a)" stroke-width="2"/>
+          <rect x="554" y="24" width="190" height="38" rx="10" style="fill:var(--a-soft)"/>
+          <text x="570" y="49" style="fill:var(--a); font:700 16px var(--f-mono)">libro</text>
+          <text x="570" y="90" style="fill:var(--ink); font:700 14px var(--f-mono)">id_libro  PK</text>
+          <text x="570" y="118" style="fill:var(--ink); font:400 14px var(--f-mono)">titulo</text>
+          <text x="570" y="146" style="fill:var(--ink); font:400 14px var(--f-mono)">anio</text>
+
+          <path d="M206 86 H245 V104 H285" fill="none" style="stroke:var(--muted)" stroke-width="2"/>
+          <text x="214" y="78" style="fill:var(--muted); font:700 13px var(--f-mono)">1</text>
+          <path d="M271 92 L285 104 L271 116" fill="none" style="stroke:var(--muted)" stroke-width="2"/>
+          <text x="258" y="126" style="fill:var(--muted); font:700 13px var(--f-mono)">N</text>
+
+          <path d="M554 86 H515 V132 H475" fill="none" style="stroke:var(--muted)" stroke-width="2"/>
+          <text x="538" y="78" style="fill:var(--muted); font:700 13px var(--f-mono)">1</text>
+          <path d="M489 120 L475 132 L489 144" fill="none" style="stroke:var(--muted)" stroke-width="2"/>
+          <text x="494" y="160" style="fill:var(--muted); font:700 13px var(--f-mono)">N</text>
+        </svg>
+      </div>
+      <figcaption>prestamo tiene dos claves foráneas, así que la consulta lleva dos ON: uno por cada relación.</figcaption>
+    </figure>
+<pre class="sql" id="q3"><span data-part="select"><span class="kw">SELECT</span> <span class="al-c">s</span>.nombre, <span class="al-a">l</span>.titulo, <span class="al-d">p</span>.fecha</span>
+<span data-part="from"><span class="kw">FROM</span> prestamo <span class="al-d">p</span></span>
+<span data-part="join1"><span class="kw">INNER JOIN</span> socio <span class="al-c">s</span></span> <span data-part="on1"><span class="kw">ON</span> <span class="al-d">p</span>.id_socio = <span class="al-c">s</span>.id_socio</span>   <span class="cm">-- 1.º JOIN</span>
+<span data-part="join2"><span class="kw">INNER JOIN</span> libro <span class="al-a">l</span></span> <span data-part="on2"><span class="kw">ON</span> <span class="al-d">p</span>.id_libro = <span class="al-a">l</span>.id_libro</span>;  <span class="cm">-- 2.º JOIN</span></pre>
+    <div class="player" id="p3"></div>
+  </div>
+</section>
+
+<!-- 5 ERRORES -->
+<section class="band alt" id="errores">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="step-n">5 · ERRORES COMUNES</p>
+      <h2>Tres errores que aparecen en todas las clases</h2>
+    </div>
+    <div class="cards">
+      <article class="card">
+        <p class="tag bad">Olvidar el ON</p>
+<pre class="sql"><span class="kw">SELECT</span> titulo, nombre
+<span class="kw">FROM</span> libro, autor;</pre>
+        <p>Sin condición se devuelven todas las combinaciones: el producto cartesiano. Con 5 libros y 4 autores son <b>20 filas</b>, y 16 no tienen sentido. Es la cuadrícula de la sección 1 sin filtrar.</p>
+      </article>
+      <article class="card">
+        <p class="tag bad">Columna ambigua</p>
+<pre class="sql"><span class="kw">SELECT</span> titulo, id_autor
+<span class="kw">FROM</span> libro l
+<span class="kw">JOIN</span> autor a <span class="kw">ON</span> l.id_autor = a.id_autor;</pre>
+        <div class="err">Error Code: 1052. Column 'id_autor' in field list is ambiguous</div>
+        <p><span class="inline">id_autor</span> existe en las dos tablas. Escribí <span class="inline">l.id_autor</span> o <span class="inline">a.id_autor</span>.</p>
+      </article>
+      <article class="card">
+        <p class="tag bad">Unir por la columna equivocada</p>
+<pre class="sql"><span class="kw">SELECT</span> l.titulo, a.nombre
+<span class="kw">FROM</span> libro l
+<span class="kw">JOIN</span> autor a <span class="kw">ON</span> l.id_libro = a.id_autor;</pre>
+        <p>No da error, pero sí un resultado falso: «La tregua» (id_libro 2) aparece escrita por Juana de Ibarbourou (id_autor 2). El ON siempre une la <b>FK</b> con la <b>PK</b> a la que apunta.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- 6 PRACTICA -->
+<section class="band" id="practica">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="step-n">6 · PRÁCTICA</p>
+      <h2>Ahora te toca</h2>
+      <p class="prose">Copiá el script en MySQL Workbench, ejecutalo y resolvé los ejercicios. Los datos son los mismos de las animaciones, así que podés comparar tus resultados.</p>
+    </div>
+
+    <details>
+      <summary>Script de la base biblio_utu (crear tablas y cargar datos)</summary>
+      <div style="display:flex; flex-direction:column; gap:12px">
+        <div class="copyrow">
+          <span style="color:var(--muted); font-size:15px">6 tablas · 24 filas</span>
+          <button class="btn" type="button" id="copySql">Copiar script</button>
+        </div>
+<pre class="sql" id="sqlScript"><span class="kw">CREATE DATABASE IF NOT EXISTS</span> biblio_utu;
+<span class="kw">USE</span> biblio_utu;
+
+<span class="cm">-- herencia: un alumno es una persona</span>
+<span class="kw">CREATE TABLE</span> persona (
+  cod    <span class="kw">INT AUTO_INCREMENT PRIMARY KEY</span>,
+  nombre <span class="kw">VARCHAR</span>(80) <span class="kw">NOT NULL</span>
+);
+
+<span class="kw">CREATE TABLE</span> alumno (
+  cod   <span class="kw">INT PRIMARY KEY</span>,
+  tel   <span class="kw">VARCHAR</span>(20),
+  grupo <span class="kw">VARCHAR</span>(20) <span class="kw">NOT NULL</span>,
+  <span class="kw">FOREIGN KEY</span> (cod) <span class="kw">REFERENCES</span> persona(cod)
+    <span class="kw">ON DELETE CASCADE</span>
+);
+
+<span class="kw">INSERT INTO</span> persona (nombre) <span class="kw">VALUES</span>
+  (<span class="str">'Ana Silva'</span>), (<span class="str">'Bruno Méndez'</span>), (<span class="str">'Carla Núñez'</span>),
+  (<span class="str">'Diego Ferreira'</span>), (<span class="str">'Elena Sosa'</span>);
+
+<span class="kw">INSERT INTO</span> alumno (cod, tel, grupo) <span class="kw">VALUES</span>
+  (1, <span class="str">'099 000 101'</span>, <span class="str">'2.º BT'</span>),
+  (2, <span class="str">'099 000 102'</span>, <span class="str">'2.º BT'</span>),
+  (4, <span class="str">'099 000 104'</span>, <span class="str">'1.º BT'</span>);
+
+<span class="cm">-- biblioteca</span>
+
+<span class="kw">CREATE TABLE</span> autor (
+  id_autor <span class="kw">INT AUTO_INCREMENT PRIMARY KEY</span>,
+  nombre   <span class="kw">VARCHAR</span>(80) <span class="kw">NOT NULL</span>,
+  pais     <span class="kw">VARCHAR</span>(40)
+);
+
+<span class="kw">CREATE TABLE</span> libro (
+  id_libro <span class="kw">INT AUTO_INCREMENT PRIMARY KEY</span>,
+  titulo   <span class="kw">VARCHAR</span>(120) <span class="kw">NOT NULL</span>,
+  anio     <span class="kw">INT</span>,
+  id_autor <span class="kw">INT NULL</span>,
+  <span class="kw">FOREIGN KEY</span> (id_autor) <span class="kw">REFERENCES</span> autor(id_autor)
+);
+
+<span class="kw">CREATE TABLE</span> socio (
+  id_socio <span class="kw">INT AUTO_INCREMENT PRIMARY KEY</span>,
+  nombre   <span class="kw">VARCHAR</span>(80) <span class="kw">NOT NULL</span>,
+  grupo    <span class="kw">VARCHAR</span>(20)
+);
+
+<span class="kw">CREATE TABLE</span> prestamo (
+  id_prestamo <span class="kw">INT AUTO_INCREMENT PRIMARY KEY</span>,
+  id_socio    <span class="kw">INT NOT NULL</span>,
+  id_libro    <span class="kw">INT NOT NULL</span>,
+  fecha       <span class="kw">DATE NOT NULL</span>,
+  <span class="kw">FOREIGN KEY</span> (id_socio) <span class="kw">REFERENCES</span> socio(id_socio),
+  <span class="kw">FOREIGN KEY</span> (id_libro) <span class="kw">REFERENCES</span> libro(id_libro)
+);
+
+<span class="kw">INSERT INTO</span> autor (nombre, pais) <span class="kw">VALUES</span>
+  (<span class="str">'Horacio Quiroga'</span>, <span class="str">'Uruguay'</span>),
+  (<span class="str">'Juana de Ibarbourou'</span>, <span class="str">'Uruguay'</span>),
+  (<span class="str">'Mario Benedetti'</span>, <span class="str">'Uruguay'</span>),
+  (<span class="str">'Gabriela Mistral'</span>, <span class="str">'Chile'</span>);
+
+<span class="kw">INSERT INTO</span> libro (titulo, anio, id_autor) <span class="kw">VALUES</span>
+  (<span class="str">'Cuentos de la selva'</span>, 1918, 1),
+  (<span class="str">'La tregua'</span>, 1960, 3),
+  (<span class="str">'Las lenguas de diamante'</span>, 1919, 2),
+  (<span class="str">'Cuentos de amor de locura y de muerte'</span>, 1917, 1),
+  (<span class="str">'Atlas escolar'</span>, 2020, <span class="kw">NULL</span>);
+
+<span class="kw">INSERT INTO</span> socio (nombre, grupo) <span class="kw">VALUES</span>
+  (<span class="str">'Lucía Pérez'</span>, <span class="str">'2.º BT'</span>),
+  (<span class="str">'Matías Rodríguez'</span>, <span class="str">'2.º BT'</span>),
+  (<span class="str">'Sofía González'</span>, <span class="str">'1.º BT'</span>);
+
+<span class="kw">INSERT INTO</span> prestamo (id_socio, id_libro, fecha) <span class="kw">VALUES</span>
+  (1, 2, <span class="str">'2026-10-01'</span>),
+  (2, 1, <span class="str">'2026-10-03'</span>),
+  (1, 3, <span class="str">'2026-10-07'</span>),
+  (2, 2, <span class="str">'2026-10-12'</span>);</pre>
+      </div>
+    </details>
+
+    <h3>Ejercicios</h3>
+    <div style="display:flex; flex-direction:column; gap:12px">
+      <details>
+        <summary>Herencia · Nombre y teléfono de los alumnos de 2.º BT (2 tablas)</summary>
+        <div style="display:flex; flex-direction:column; gap:10px">
+<pre class="sql"><span class="kw">SELECT</span> p.nombre, a.tel
+<span class="kw">FROM</span> persona p
+<span class="kw">INNER JOIN</span> alumno a <span class="kw">ON</span> p.cod = a.cod
+<span class="kw">WHERE</span> a.grupo = <span class="str">'2.º BT'</span>;</pre>
+          <p>Resultado esperado: Ana Silva y Bruno Méndez. El nombre sale de persona y el teléfono de alumno.</p>
+        </div>
+      </details>
+      <details>
+        <summary>A · Título y año de cada libro con el país de su autor (2 tablas)</summary>
+        <div style="display:flex; flex-direction:column; gap:10px">
+<pre class="sql"><span class="kw">SELECT</span> l.titulo, l.anio, a.pais
+<span class="kw">FROM</span> libro l
+<span class="kw">INNER JOIN</span> autor a <span class="kw">ON</span> l.id_autor = a.id_autor;</pre>
+          <p>Resultado esperado: 4 filas. «Atlas escolar» no aparece porque no tiene autor.</p>
+        </div>
+      </details>
+      <details>
+        <summary>B · Nombre del socio y fecha de cada préstamo, del más reciente al más viejo (2 tablas)</summary>
+        <div style="display:flex; flex-direction:column; gap:10px">
+<pre class="sql"><span class="kw">SELECT</span> s.nombre, p.fecha
+<span class="kw">FROM</span> prestamo p
+<span class="kw">INNER JOIN</span> socio s <span class="kw">ON</span> p.id_socio = s.id_socio
+<span class="kw">ORDER BY</span> p.fecha <span class="kw">DESC</span>;</pre>
+          <p>Resultado esperado: 4 filas, empezando por Matías Rodríguez el 2026-10-12.</p>
+        </div>
+      </details>
+      <details>
+        <summary>C · Títulos que pidió prestados Lucía Pérez (3 tablas + WHERE)</summary>
+        <div style="display:flex; flex-direction:column; gap:10px">
+<pre class="sql"><span class="kw">SELECT</span> l.titulo, p.fecha
+<span class="kw">FROM</span> prestamo p
+<span class="kw">INNER JOIN</span> socio s <span class="kw">ON</span> p.id_socio = s.id_socio
+<span class="kw">INNER JOIN</span> libro l <span class="kw">ON</span> p.id_libro = l.id_libro
+<span class="kw">WHERE</span> s.nombre = <span class="str">'Lucía Pérez'</span>;</pre>
+          <p>Resultado esperado: «La tregua» y «Las lenguas de diamante».</p>
+        </div>
+      </details>
+      <details>
+        <summary>D · Desafío: quién se llevó libros de autores uruguayos (4 tablas)</summary>
+        <div style="display:flex; flex-direction:column; gap:10px">
+<pre class="sql"><span class="kw">SELECT</span> s.nombre, l.titulo, a.nombre <span class="kw">AS</span> autor
+<span class="kw">FROM</span> prestamo p
+<span class="kw">INNER JOIN</span> socio s <span class="kw">ON</span> p.id_socio = s.id_socio
+<span class="kw">INNER JOIN</span> libro l <span class="kw">ON</span> p.id_libro = l.id_libro
+<span class="kw">INNER JOIN</span> autor a <span class="kw">ON</span> l.id_autor = a.id_autor
+<span class="kw">WHERE</span> a.pais = <span class="str">'Uruguay'</span>;</pre>
+          <p>La regla se mantiene: con N tablas hacen falta N − 1 JOIN. Con <span class="inline">AS</span> le ponés otro nombre a una columna del resultado.</p>
+        </div>
+      </details>
+    </div>
+
+    <h3>Autoevaluación</h3>
+    <form class="quiz" id="quiz"></form>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span>Lección: INNER JOIN de dos y tres tablas · caso BiblioUTU</span>
+    <span style="font-family:var(--f-mono)">MySQL</span>
+  </div>
+</footer>
+
+<script>
+(function(){
+  /* ---------- datos ---------- */
+  var autor = [
+    {id_autor:1, nombre:'Horacio Quiroga', pais:'Uruguay'},
+    {id_autor:2, nombre:'Juana de Ibarbourou', pais:'Uruguay'},
+    {id_autor:3, nombre:'Mario Benedetti', pais:'Uruguay'},
+    {id_autor:4, nombre:'Gabriela Mistral', pais:'Chile'}
+  ];
+  var libro = [
+    {id_libro:1, titulo:'Cuentos de la selva', anio:1918, id_autor:1},
+    {id_libro:2, titulo:'La tregua', anio:1960, id_autor:3},
+    {id_libro:3, titulo:'Las lenguas de diamante', anio:1919, id_autor:2},
+    {id_libro:4, titulo:'Cuentos de amor de locura y de muerte', anio:1917, id_autor:1},
+    {id_libro:5, titulo:'Atlas escolar', anio:2020, id_autor:null}
+  ];
+  var socio = [
+    {id_socio:1, nombre:'Lucía Pérez', grupo:'2.º BT'},
+    {id_socio:2, nombre:'Matías Rodríguez', grupo:'2.º BT'},
+    {id_socio:3, nombre:'Sofía González', grupo:'1.º BT'}
+  ];
+  var prestamo = [
+    {id_prestamo:1, id_socio:1, id_libro:2, fecha:'2026-10-01'},
+    {id_prestamo:2, id_socio:2, id_libro:1, fecha:'2026-10-03'},
+    {id_prestamo:3, id_socio:1, id_libro:3, fecha:'2026-10-07'},
+    {id_prestamo:4, id_socio:2, id_libro:2, fecha:'2026-10-12'}
+  ];
+
+  function el(tag, cls, html){ var e=document.createElement(tag); if(cls) e.className=cls; if(html!=null) e.innerHTML=html; return e; }
+  function esc(s){ return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+  function fmt(v){ return v===null ? 'NULL' : v; }
+
+  /* ---------- tabla ---------- */
+  function makeTable(opts){
+    // opts: {name, cls, note, cols:[{k,label,role}], rows, wide, placeholder}
+    var box = el('div','tbox '+opts.cls+(opts.wide?' wide':''));
+    var h = el('div','tbox-h'); h.appendChild(el('span','tname',esc(opts.name)));
+    if(opts.note) h.appendChild(el('small',null,esc(opts.note)));
+    box.appendChild(h);
+    var sc = el('div','scroll'); var t = el('table','data');
+    var thead = el('thead'); var tr = el('tr');
+    opts.cols.forEach(function(c){ tr.appendChild(el('th',null, esc(c.label||c.k) + (c.role?'<span class="badge '+c.role+'">'+c.role.toUpperCase()+'</span>':''))); });
+    thead.appendChild(tr); t.appendChild(thead);
+    var tbody = el('tbody'); t.appendChild(tbody);
+    var rowEls = [];
+    (opts.rows||[]).forEach(function(r){ rowEls.push(addRow(tbody, opts.cols, r)); });
+    var ph = null;
+    if(opts.placeholder){ ph = el('tr','placeholder'); var td=el('td',null,esc(opts.placeholder)); td.colSpan=opts.cols.length; ph.appendChild(td); tbody.appendChild(ph); }
+    sc.appendChild(t); box.appendChild(sc);
+    return {box:box, tbody:tbody, rows:rowEls, cols:opts.cols, ph:ph};
+  }
+  function addRow(tbody, cols, r){
+    var tr = el('tr');
+    cols.forEach(function(c){
+      var v = r[c.k]; var cls = (c.role ? 'key' : '') + (v===null?' null':'');
+      tr.appendChild(el('td', cls.trim()||null, esc(fmt(v))));
+    });
+    tbody.appendChild(tr); return tr;
+  }
+
+  /* ---------- motor de animación ---------- */
+  function Player(root, opts){
+    // opts: {build: function(area) -> stages[], query: element, total label}
+    var self = this;
+    root.innerHTML = '';
+    var controls = el('div','controls');
+    var bPlay = el('button','btn primary'); bPlay.type='button';
+    var bStep = el('button','btn','<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 2.5v11l7-5.5z M11 2.5h2v11h-2z" fill="currentColor"/></svg>Paso'); bStep.type='button';
+    var bReset = el('button','btn','<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3a5 5 0 1 1-4.6 3H1.5l3-3.5 3 3.5H5.6A3.2 3.2 0 1 0 8 4.8z" fill="currentColor"/></svg>Reiniciar'); bReset.type='button';
+    var speed = el('label','speed','Velocidad <select><option value="1.6">Lenta</option><option value="1" selected>Normal</option><option value="0.45">Rápida</option></select>');
+    controls.appendChild(bPlay); controls.appendChild(bStep); controls.appendChild(bReset); controls.appendChild(speed);
+    var prog = el('div','progress','<span></span>');
+    var readout = el('div','readout'); readout.setAttribute('aria-live','polite');
+    var counter = el('span','counter');
+    var rtext = el('span');
+    readout.appendChild(rtext);
+    var area = el('div'); area.style.display='flex'; area.style.flexDirection='column'; area.style.gap='18px';
+    root.appendChild(controls); root.appendChild(prog); root.appendChild(readout); root.appendChild(area);
+    var sel = speed.querySelector('select');
+    var events, idx, timer=null, stages;
+
+    function setQuery(parts){
+      if(!opts.query) return;
+      opts.query.querySelectorAll('[data-part]').forEach(function(p){ p.classList.toggle('hl', parts.indexOf(p.getAttribute('data-part'))>=0); });
+    }
+    function setPlayLabel(playing){
+      bPlay.innerHTML = playing
+        ? '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.5h3v11H4zM9 2.5h3v11H9z" fill="currentColor"/></svg>Pausa'
+        : '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.5v11l9-5.5z" fill="currentColor"/></svg>Reproducir';
+    }
+    function say(html){ rtext.innerHTML = html; }
+    function updateProg(){
+      prog.firstChild.style.width = (events.length? (idx/events.length*100):0)+'%';
+      var done = idx>=events.length;
+      bStep.disabled = done; bPlay.disabled = done;
+    }
+    function reset(){
+      stop(); area.innerHTML=''; stages = opts.build(area);
+      events = [];
+      stages.forEach(function(s,si){ events = events.concat(gen(s,si)); });
+      idx = 0; setQuery(['from']); say(opts.intro); updateProg();
+    }
+    function gen(s, si){
+      var ev=[];
+      s.drv.rows.forEach(function(d,i){
+        ev.push({si:si,t:'focus',i:i});
+        var any=false;
+        s.oth.rows.forEach(function(o,j){
+          var ok = d[s.dk]!==null && d[s.dk]===o[s.ok];
+          ev.push({si:si,t:'cmp',i:i,j:j,ok:ok});
+          if(ok){ any=true; ev.push({si:si,t:'emit',i:i,j:j}); }
+        });
+        if(!any) ev.push({si:si,t:'drop',i:i});
+      });
+      ev.push({si:si,t:'end'});
+      return ev;
+    }
+    function clear(rows, classes){ rows.forEach(function(r){ classes.forEach(function(c){ r.classList.remove(c); }); }); }
+    function apply(e){
+      var s = stages[e.si];
+      var dRows = s.drvEls(), oRows = s.othEls();
+      var d = s.drv.rows[e.i], o = s.oth.rows[e.j];
+      if(e.t==='focus'){
+        clear(dRows,['is-focus']); clear(oRows,['is-cmp','is-hit','is-miss']);
+        dRows[e.i].classList.add('is-focus');
+        setQuery([s.onPart]);
+        say('Fila de <span class="tname '+s.drv.cls+'">'+s.drv.alias+'</span>: '+s.drv.label(d)+' → <b>'+s.dkLabel+' = '+fmt(d[s.dk])+'</b>. Busco en <span class="tname '+s.oth.cls+'">'+s.oth.name+'</span>…');
+      } else if(e.t==='cmp'){
+        clear(oRows,['is-cmp','is-hit','is-miss']);
+        oRows[e.j].classList.add('is-cmp', e.ok?'is-hit':'is-miss');
+        setQuery([s.onPart]);
+        say('<b>'+fmt(d[s.dk])+' = '+o[s.ok]+'</b> '+(e.ok?'<span class="ok">✓ coincide</span> con '+s.oth.label(o):'<span class="bad">✗ no coincide</span>'+(d[s.dk]===null?' (NULL nunca es igual a nada)':'')));
+      } else if(e.t==='emit'){
+        var vals = s.emit(d,o);
+        if(s.res.ph && s.res.ph.parentNode){ s.res.ph.parentNode.removeChild(s.res.ph); }
+        var tr = addRow(s.res.tbody, s.res.cols, vals); tr.classList.add('enter');
+        s.res.rows.push(tr);
+        setQuery(s.isLast?['select']:[s.onPart]);
+        say('<span class="ok">Se agrega una fila</span> al '+(s.isLast?'resultado':'resultado parcial')+': '+s.res.label(vals)+'.');
+      } else if(e.t==='drop'){
+        dRows[e.i].classList.remove('is-focus'); dRows[e.i].classList.add('is-drop');
+        clear(oRows,['is-cmp','is-hit','is-miss']);
+        say('<span class="bad">Sin pareja:</span> '+s.drv.label(d)+' no coincide con ninguna fila de '+s.oth.name+', así que <b>queda afuera</b>.');
+      } else if(e.t==='end'){
+        clear(dRows,['is-focus']); clear(oRows,['is-cmp','is-hit','is-miss']);
+        var used = {}; s.drv.rows.forEach(function(dd){ if(dd[s.dk]!==null) used[dd[s.dk]]=1; });
+        var left = [];
+        s.oth.rows.forEach(function(oo,j){ if(!used[oo[s.ok]]){ oRows[j].classList.add('is-drop'); left.push(s.oth.label(oo)); } });
+        setQuery(s.isLast?['select']:[s.onPart]);
+        say((left.length? 'En '+s.oth.name+', '+left.join(' y ')+' no aparece'+(left.length>1?'n':'')+' en ninguna pareja, así que también queda'+(left.length>1?'n':'')+' afuera. ':'')
+          + (s.isLast? '<b>Resultado final: '+s.res.rows.length+' filas.</b>' : '<b>Resultado parcial listo: '+s.res.rows.length+' filas.</b> Ahora se le suma la tercera tabla.'));
+      }
+    }
+    function step(){ if(idx<events.length){ apply(events[idx]); idx++; updateProg(); } if(idx>=events.length) stop(); }
+    function delay(){ var e=events[idx]; var base = e && e.t==='cmp' ? 520 : 1000; return base*parseFloat(sel.value); }
+    function tick(){ step(); if(timer!==null && idx<events.length) timer=setTimeout(tick, delay()); }
+    function play(){ if(idx>=events.length) return; timer=setTimeout(tick, 60); setPlayLabel(true); }
+    function stop(){ if(timer!==null){ clearTimeout(timer); timer=null; } setPlayLabel(false); }
+    bPlay.addEventListener('click', function(){ timer!==null ? stop() : play(); });
+    bStep.addEventListener('click', function(){ stop(); step(); });
+    bReset.addEventListener('click', reset);
+    reset();
+  }
+
+  /* ---------- lección 2 tablas: herencia persona -> alumno ---------- */
+  var persona = [
+    {cod:1, nombre:'Ana Silva'},
+    {cod:2, nombre:'Bruno Méndez'},
+    {cod:3, nombre:'Carla Núñez'},
+    {cod:4, nombre:'Diego Ferreira'},
+    {cod:5, nombre:'Elena Sosa'}
+  ];
+  var alumno = [
+    {cod:1, tel:'099 000 101', grupo:'2.º BT'},
+    {cod:2, tel:'099 000 102', grupo:'2.º BT'},
+    {cod:4, tel:'099 000 104', grupo:'1.º BT'}
+  ];
+  var colsPersona = [{k:'cod',role:'pk'},{k:'nombre'}];
+  var colsAlumno = [{k:'cod',role:'fk',label:'cod'},{k:'tel'},{k:'grupo'}];
+  new Player(document.getElementById('p2'), {
+    query: document.getElementById('q2'),
+    intro: 'Arranca por <b>FROM persona</b>. Tocá Reproducir para ver cada comparación del ON.',
+    build: function(area){
+      var row = el('div','tables');
+      var tP = makeTable({name:'persona  p', cls:'t-persona', note:'5 filas', cols:colsPersona, rows:persona});
+      var tA = makeTable({name:'alumno  a', cls:'t-alumno', note:'3 filas · cod es PK y FK', cols:colsAlumno, rows:alumno});
+      row.appendChild(tP.box); row.appendChild(tA.box); area.appendChild(row);
+      area.appendChild(el('div','arrow-down','<svg width="14" height="18" viewBox="0 0 14 18" aria-hidden="true"><path d="M7 1v15M1 10l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2"/></svg> resultado: el alumno completo'));
+      var tR = makeTable({name:'resultado', cls:'t-res', wide:true, cols:[{k:'cod',label:'p.cod'},{k:'nombre',label:'p.nombre'},{k:'tel',label:'a.tel'},{k:'grupo',label:'a.grupo'}], placeholder:'Las filas aparecen acá a medida que el ON encuentra coincidencias.'});
+      area.appendChild(tR.box);
+      return [{
+        drv:{name:'persona', alias:'persona', cls:'t-persona', rows:persona, label:function(r){return esc(r.nombre);}},
+        oth:{name:'alumno', cls:'t-alumno', rows:alumno, label:function(r){return 'el alumno '+r.cod;}},
+        dk:'cod', ok:'cod', dkLabel:'p.cod', onPart:'on', isLast:true,
+        drvEls:function(){return tP.rows;}, othEls:function(){return tA.rows;},
+        emit:function(d,o){return {cod:d.cod, nombre:d.nombre, tel:o.tel, grupo:o.grupo};},
+        res:{tbody:tR.tbody, cols:tR.cols, rows:[], ph:tR.ph, label:function(v){return esc(v.nombre)+' – '+esc(v.grupo);}}
+      }];
+    }
+  });
+
+  /* ---------- lección 3 tablas ---------- */
+  var colsPres = [{k:'id_prestamo',role:'pk'},{k:'id_socio',role:'fk'},{k:'id_libro',role:'fk'},{k:'fecha'}];
+  var colsSocio = [{k:'id_socio',role:'pk'},{k:'nombre'},{k:'grupo'}];
+  var colsLib3 = [{k:'id_libro',role:'pk'},{k:'titulo'}];
+  var inter = [];
+  prestamo.forEach(function(p){ socio.forEach(function(s){ if(p.id_socio===s.id_socio) inter.push({id_prestamo:p.id_prestamo, nombre:s.nombre, id_libro:p.id_libro, fecha:p.fecha}); }); });
+  new Player(document.getElementById('p3'), {
+    query: document.getElementById('q3'),
+    intro: 'Primero se une <b>prestamo</b> con <b>socio</b>. Después, ese resultado parcial se une con <b>libro</b>.',
+    build: function(area){
+      var row = el('div','tables');
+      var tP = makeTable({name:'prestamo  p', cls:'t-prestamo', note:'4 filas', cols:colsPres, rows:prestamo});
+      var tS = makeTable({name:'socio  s', cls:'t-socio', note:'3 filas', cols:colsSocio, rows:socio});
+      var tB = makeTable({name:'libro  l', cls:'t-libro', note:'5 filas', cols:colsLib3, rows:libro});
+      row.appendChild(tP.box); row.appendChild(tS.box); row.appendChild(tB.box); area.appendChild(row);
+      area.appendChild(el('div','arrow-down','<svg width="14" height="18" viewBox="0 0 14 18" aria-hidden="true"><path d="M7 1v15M1 10l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2"/></svg> 1.º JOIN: prestamo + socio'));
+      var colsInter = [{k:'id_prestamo',label:'p.id_prestamo'},{k:'nombre',label:'s.nombre'},{k:'id_libro',label:'p.id_libro'},{k:'fecha',label:'p.fecha'}];
+      var tI = makeTable({name:'resultado parcial', cls:'t-prestamo', note:'se usa como entrada del 2.º JOIN', wide:true, cols:colsInter, placeholder:'Acá se arma la unión de prestamo con socio.'});
+      area.appendChild(tI.box);
+      area.appendChild(el('div','arrow-down','<svg width="14" height="18" viewBox="0 0 14 18" aria-hidden="true"><path d="M7 1v15M1 10l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2"/></svg> 2.º JOIN: resultado parcial + libro'));
+      var tR = makeTable({name:'resultado final', cls:'t-res', wide:true, cols:[{k:'nombre',label:'s.nombre'},{k:'titulo',label:'l.titulo'},{k:'fecha',label:'p.fecha'}], placeholder:'Las filas finales aparecen acá.'});
+      area.appendChild(tR.box);
+      var s1 = {
+        drv:{name:'prestamo', alias:'prestamo', cls:'t-prestamo', rows:prestamo, label:function(r){return 'préstamo n.º '+r.id_prestamo;}},
+        oth:{name:'socio', cls:'t-socio', rows:socio, label:function(r){return esc(r.nombre);}},
+        dk:'id_socio', ok:'id_socio', dkLabel:'p.id_socio', onPart:'on1', isLast:false,
+        drvEls:function(){return tP.rows;}, othEls:function(){return tS.rows;},
+        emit:function(d,o){return {id_prestamo:d.id_prestamo, nombre:o.nombre, id_libro:d.id_libro, fecha:d.fecha};},
+        res:{tbody:tI.tbody, cols:tI.cols, rows:tI.rows, ph:tI.ph, label:function(v){return 'préstamo '+v.id_prestamo+' – '+esc(v.nombre);}}
+      };
+      var s2 = {
+        drv:{name:'resultado parcial', alias:'resultado parcial', cls:'t-prestamo', rows:inter, label:function(r){return 'préstamo n.º '+r.id_prestamo+' ('+esc(r.nombre)+')';}},
+        oth:{name:'libro', cls:'t-libro', rows:libro, label:function(r){return '«'+esc(r.titulo)+'»';}},
+        dk:'id_libro', ok:'id_libro', dkLabel:'p.id_libro', onPart:'on2', isLast:true,
+        drvEls:function(){return tI.rows;}, othEls:function(){return tB.rows;},
+        emit:function(d,o){return {nombre:d.nombre, titulo:o.titulo, fecha:d.fecha};},
+        res:{tbody:tR.tbody, cols:tR.cols, rows:[], ph:tR.ph, label:function(v){return esc(v.nombre)+' – «'+esc(v.titulo)+'» – '+v.fecha;}}
+      };
+      return [s1, s2];
+    }
+  });
+
+  /* ---------- producto cartesiano ---------- */
+  var cart = document.getElementById('cart');
+  function drawCart(){
+    cart.innerHTML = '';
+    cart.appendChild(el('div','hd',''));
+    autor.forEach(function(a){ cart.appendChild(el('div','hd', esc(a.nombre.split(' ').slice(-1)[0]))); });
+    var n=0;
+    libro.forEach(function(l){
+      cart.appendChild(el('div','rh', esc(l.titulo)));
+      autor.forEach(function(a){
+        var m = l.id_autor===a.id_autor;
+        var c = el('div','cell'+(m?' m':''), m?'✓':'·');
+        c.title = '«'+l.titulo+'» + '+a.nombre+(m?' → cumple el ON':'');
+        c.style.animationDelay = (n*0.07)+'s'; n++;
+        cart.appendChild(c);
+      });
+    });
+  }
+  drawCart();
+  document.getElementById('cartPlay').addEventListener('click', function(){
+    cart.classList.remove('animating','filtering'); void cart.offsetWidth;
+    drawCart(); cart.classList.add('animating');
+    setTimeout(function(){ cart.classList.add('filtering'); }, 20*70+500);
+  });
+
+  /* ---------- quiz ---------- */
+  var Q = [
+    {q:'En la sección 2, ¿cuántas filas devuelve el INNER JOIN entre persona y alumno?', o:['2','3','5','15'], a:1,
+     e:'3. Hay 5 personas, pero solo 3 tienen fila en alumno.'},
+    {q:'¿Por qué Carla Núñez no aparece en el resultado?', o:['Porque su cod es 3','Porque no tiene fila en alumno: no es alumna','Porque falta un WHERE','Porque tel es NULL'], a:1,
+     e:'INNER JOIN solo muestra filas con pareja en las dos tablas. Carla es persona, pero no alumna.'},
+    {q:'En la herencia PERSONA → ALUMNO, ¿qué es cod dentro de ALUMNO?', o:['Solo PK','Solo FK','PK y FK a la vez','No existe en ALUMNO'], a:2,
+     e:'ALUMNO hereda cod de PERSONA: lo identifica (PK) y a la vez apunta a su persona (FK).'},
+    {q:'Si escribís FROM libro, autor sin ON (sección 1), ¿cuántas filas aparecen?', o:['4','9','20','Da error'], a:2,
+     e:'20: es el producto cartesiano, 5 × 4 combinaciones.'},
+    {q:'Al pasar del MER al MR una relación 1:N entre AUTOR y LIBRO, ¿qué pasa con la clave?', o:['id_libro pasa a AUTOR','id_autor se hereda en LIBRO como FK','Se crea una tabla nueva','Las dos tablas se fusionan'], a:1,
+     e:'La clave primaria del lado 1 (AUTOR) se hereda en el lado N (LIBRO) como clave foránea.'},
+    {q:'¿En qué se transforma la relación N:M «pide prestado» al pasar al MR?', o:['En una FK dentro de SOCIO','En una FK dentro de LIBRO','En la tabla PRESTAMO con las dos claves heredadas'], a:2,
+     e:'Una relación N:M genera una tabla nueva que hereda las claves de las dos entidades y guarda los atributos de la relación (fecha).'},
+    {q:'¿Cuántos JOIN necesitás para unir prestamo, socio y libro?', o:['1','2','3'], a:1,
+     e:'2. Con N tablas se escriben N − 1 JOIN, uno por cada relación.'},
+    {q:'¿Qué columnas van en el ON para unir prestamo con libro?', o:['p.id_prestamo = l.id_libro','p.id_libro = l.id_libro','p.fecha = l.anio'], a:1,
+     e:'La clave foránea p.id_libro con la clave primaria l.id_libro a la que apunta.'}
+  ];
+  var quiz = document.getElementById('quiz');
+  Q.forEach(function(item, qi){
+    var box = el('div','q');
+    var fs = el('fieldset'); fs.appendChild(el('legend',null,(qi+1)+'. '+esc(item.q)));
+    item.o.forEach(function(op, oi){
+      var id='q'+qi+'o'+oi;
+      var lab = el('label','opt'); lab.htmlFor=id;
+      lab.innerHTML = '<input type="radio" name="q'+qi+'" id="'+id+'" value="'+oi+'"> '+esc(op);
+      fs.appendChild(lab);
+    });
+    box.appendChild(fs);
+    var fb = el('p','fb'); fb.setAttribute('aria-live','polite'); box.appendChild(fb);
+    quiz.appendChild(box);
+  });
+  var qc = el('div','controls');
+  var bCheck = el('button','btn primary','Corregir'); bCheck.type='submit';
+  var bAgain = el('button','btn','Volver a intentar'); bAgain.type='button';
+  var score = el('span','score'); score.setAttribute('aria-live','polite');
+  qc.appendChild(bCheck); qc.appendChild(bAgain); qc.appendChild(score); quiz.appendChild(qc);
+  quiz.addEventListener('submit', function(ev){
+    ev.preventDefault(); var pts=0;
+    Q.forEach(function(item, qi){
+      var box = quiz.children[qi]; var fb = box.querySelector('.fb');
+      box.querySelectorAll('.opt').forEach(function(l){ l.classList.remove('right','wrong'); });
+      var sel = box.querySelector('input:checked');
+      if(!sel){ fb.className='fb bad'; fb.textContent='Elegí una opción.'; return; }
+      var v = +sel.value;
+      box.querySelectorAll('.opt')[item.a].classList.add('right');
+      if(v===item.a){ pts++; fb.className='fb ok'; fb.textContent='Correcto. '+item.e; }
+      else { sel.parentNode.classList.add('wrong'); fb.className='fb bad'; fb.textContent='No. '+item.e; }
+    });
+    score.textContent = pts+' de '+Q.length;
+  });
+  bAgain.addEventListener('click', function(){
+    quiz.reset(); score.textContent='';
+    quiz.querySelectorAll('.opt').forEach(function(l){ l.classList.remove('right','wrong'); });
+    quiz.querySelectorAll('.fb').forEach(function(f){ f.textContent=''; });
+  });
+
+  /* ---------- copiar script ---------- */
+  var bCopy = document.getElementById('copySql');
+  bCopy.addEventListener('click', function(){
+    var txt = document.getElementById('sqlScript').innerText;
+    function done(){ bCopy.textContent='Copiado'; setTimeout(function(){ bCopy.textContent='Copiar script'; }, 1800); }
+    function fallback(){ var r=document.createRange(); r.selectNodeContents(document.getElementById('sqlScript')); var s=window.getSelection(); s.removeAllRanges(); s.addRange(r); bCopy.textContent='Texto seleccionado: Ctrl+C'; }
+    try{ navigator.clipboard.writeText(txt).then(done, fallback); }catch(e){ fallback(); }
+  });
+})();
+</script>
+
+</body>
+</html>
